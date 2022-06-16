@@ -21,6 +21,36 @@ typedef struct matrix_ matrix;
 /* Syntax sugar for extracting value from matrix */
 #define at(x, i, j) x->data[j][i]
 
+/* Syntax sugar for looping through the matrix */
+#define for_ij(i_bound, j_bound, inner_job) \
+    for (int i = 0; i < i_bound; i++)       \
+    {                                       \
+        for (int j = 0; j < j_bound; j++)   \
+        {                                   \
+            inner_job;                      \
+        }                                   \
+    }
+
+#define for_ij_before(i_bound, j_bound, inner_job, outer_job_before) \
+    for (int i = 0; i < i_bound; i++)                                \
+    {                                                                \
+        outer_job_before;                                            \
+        for (int j = 0; j < j_bound; j++)                            \
+        {                                                            \
+            inner_job;                                               \
+        }                                                            \
+    }
+
+#define for_ij_after(i_bound, j_bound, inner_job, outer_job_after) \
+    for (int i = 0; i < i_bound; i++)                              \
+    {                                                              \
+        for (int j = 0; j < j_bound; j++)                          \
+        {                                                          \
+            inner_job;                                             \
+        }                                                          \
+        outer_job_after;                                           \
+    }
+
 /* Memory management - Allocation */
 matrix *allocate_mat(const int n, const int p)
 {
@@ -68,14 +98,7 @@ void print_mat(matrix *const x)
     printf("[%d, %d]\n\n", x->n, x->p);
 
     /* Print elements */
-    for (int i = 0; i < x->n; i++)
-    {
-        for (int j = 0; j < x->p; j++)
-        {
-            printf("%5.1f", at(x, i, j));
-        }
-        printf("\n");
-    }
+    for_ij_after(x->n, x->p, printf("%5.1f", at(x, i, j)), printf("\n"));
 
     printf("\n");
 }
@@ -83,13 +106,7 @@ void print_mat(matrix *const x)
 /* Set the matrix to be a zero matrix  */
 void zero_mat(matrix *const x)
 {
-    for (int i = 0; i < x->n; i++)
-    {
-        for (int j = 0; j < x->p; j++)
-        {
-            set(x, i, j, 0.0);
-        }
-    }
+    for_ij(x->n, x->p, set(x, i, j, 0.0));
 }
 
 /* Set the matrix to be an diagonal matrix */
@@ -101,16 +118,10 @@ void diag_mat(matrix *const x, const float value)
         return;
     }
 
-    for (int i = 0; i < x->n; i++)
-    {
-        for (int j = 0; j < x->p; j++)
-        {
-            if (i != j)
-                set(x, i, j, 0.0);
-            else
-                set(x, i, i, value);
-        }
-    }
+    for_ij(x->n, x->p,
+           if (i != j)
+               set(x, i, j, 0.0);
+           else set(x, i, i, value););
 }
 
 /* Set the matrix to be an identity matrix */
@@ -147,13 +158,7 @@ matrix *mul_mat(matrix *const x, matrix *const y)
     matrix *result_mat = allocate_mat(x->n, y->p);
 
     /* Compute the dot product and set values for each element of the result matrix */
-    for (int i = 0; i < x->n; i++)
-    {
-        for (int j = 0; j < y->p; j++)
-        {
-            set(result_mat, i, j, dot_mat(x, y, i, j));
-        }
-    }
+    for_ij(x->n, x->p, set(result_mat, i, j, dot_mat(x, y, i, j)));
 
     /* Return the result matrix */
     return result_mat;
@@ -166,13 +171,7 @@ matrix *scalar_mul_mat(matrix *const x, const float a)
     matrix *result_mat = allocate_mat(x->n, x->p);
 
     /* Times element by scalar */
-    for (int i = 0; i < x->n; i++)
-    {
-        for (int j = 0; j < x->p; j++)
-        {
-            set(result_mat, i, j, at(x, i, j) * a);
-        }
-    }
+    for_ij(x->n, x->p, set(result_mat, i, j, at(x, i, j) * a));
 
     /* Return the result matrix */
     return result_mat;
@@ -182,13 +181,7 @@ matrix *scalar_mul_mat(matrix *const x, const float a)
 void scalar_mul_equal_mat(matrix *const x, const float a)
 {
     /* Times element by scalar */
-    for (int i = 0; i < x->n; i++)
-    {
-        for (int j = 0; j < x->p; j++)
-        {
-            set(x, i, j, at(x, i, j) * a);
-        }
-    }
+    for_ij(x->n, x->p, set(x, i, j, at(x, i, j) * a));
 }
 
 /* Scalar plus matrix */
@@ -198,13 +191,7 @@ matrix *scalar_plus_mat(matrix *const x, const float a)
     matrix *result_mat = allocate_mat(x->n, x->p);
 
     /* Plus element by scalar */
-    for (int i = 0; i < x->n; i++)
-    {
-        for (int j = 0; j < x->p; j++)
-        {
-            set(result_mat, i, j, at(x, i, j) + a);
-        }
-    }
+    for_ij(x->n, x->p, set(result_mat, i, j, at(x, i, j) + a));
 
     /* Return the result matrix */
     return result_mat;
@@ -214,13 +201,7 @@ matrix *scalar_plus_mat(matrix *const x, const float a)
 void scalar_plus_equal_mat(matrix *const x, const float a)
 {
     /* Plus element by scalar */
-    for (int i = 0; i < x->n; i++)
-    {
-        for (int j = 0; j < x->p; j++)
-        {
-            set(x, i, j, at(x, i, j) + a);
-        }
-    }
+    for_ij(x->n, x->p, set(x, i, j, at(x, i, j) + a));
 }
 
 /* Transpose a matrix */
@@ -230,13 +211,7 @@ matrix *t_mat(matrix *const x)
     matrix *result_mat = allocate_mat(x->p, x->n);
 
     /* Set elements for the result matrix */
-    for (int i = 0; i < x->n; i++)
-    {
-        for (int j = 0; j < x->p; j++)
-        {
-            set(result_mat, j, i, at(x, i, j));
-        }
-    }
+    for_ij(x->n, x->p, set(result_mat, j, i, at(x, i, j)));
 
     /* Return the result matrix */
     return result_mat;
@@ -246,6 +221,9 @@ int main(int argc, char const *argv[])
 {
     matrix *x = allocate_mat(1, 1);
     matrix *y = allocate_mat(1, 2);
+
+    diag_mat(x, 3.0);
+    print_mat(x);
 
     x->data[0][0] = 2;
     y->data[0][0] = 3;

@@ -1,145 +1,161 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include "vector.h"
+//
+// Created by Patrick Li on 9/7/22.
+//
 
-// Vector constructor
-// Initial capacity is 10
-vector_p new_vector(VEC_TYPE type)
-{
+#include "vector.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/// \n \n Vector constructor
+/// @description This function allocates memory for a vector for a given type.
+/// @param vec_type: (VEC_TYPE). Vector type.
+/// @return (vector_p). A pointer to a vector.
+vector_p new_vector(VEC_TYPE vec_type) {
     // Allocate memory for the struct
-    vector_p v = malloc(sizeof(vector_t));
-    v->capacity = 10;
-    v->size = 0;
-    v->type = type;
+    vector_p vector = malloc(sizeof(vector_t));
+    vector->capacity = 10;
+    vector->size = 0;
+    vector->type = vec_type;
 
     // Allocate memory for the container
     // Array of integers
-    if (type == VEC_INT)
-        v->data = calloc(v->capacity, sizeof(int));
+    if (vec_type == VEC_INT)
+        vector->data = calloc(vector->capacity, sizeof(int));
 
     // Array of floats
-    if (type == VEC_FLOAT)
-        v->data = calloc(v->capacity, sizeof(float));
+    if (vec_type == VEC_FLOAT)
+        vector->data = calloc(vector->capacity, sizeof(float));
 
     // Array of doubles
-    if (type == VEC_DOUBLE)
-        v->data = calloc(v->capacity, sizeof(double));
+    if (vec_type == VEC_DOUBLE)
+        vector->data = calloc(vector->capacity, sizeof(double));
 
     // Array of chars
-    if (type == VEC_CHAR)
-        v->data = calloc(v->capacity, sizeof(char));
+    if (vec_type == VEC_CHAR)
+        vector->data = calloc(vector->capacity, sizeof(char));
 
     // Array of pointers to vector
-    if (type == VEC_VEC_P)
-        v->data = calloc(v->capacity, sizeof(vector_p));
+    if (vec_type == VEC_VEC_P)
+        vector->data = calloc(vector->capacity, sizeof(vector_p));
 
     return v;
 }
 
-// Vector destroyer
-void delete_vector(vector_p v)
-{
+/// \n \n Vector destroyer
+/// @description This function deallocates memory for a vector.
+/// @param vector: (vector_p). A pointer to a vector.
+/// @return No return value, called for side effects.
+void delete_vector(vector_p vector) {
     // Deallocate the memory of the inner vectors
-    if (v->type == VEC_VEC_P)
-    {
-        vector_p *vec_p_arr = (vector_p *)v->data;
-        for (int i = 0; i < v->size; i++)
+    if (vector->type == VEC_VEC_P) {
+        vector_p *vec_p_arr = (vector_p *) vector->data;
+        for (int i = 0; i < vector->size; i++)
             delete_vector(vec_p_arr[i]);
     }
 
     // If type == VEC_VEC_P, deallocate the memory for storing the pointers to vector
-    // Ohterwise, deallocate the memory of an (int/float/double/char) array
-    free(v->data);
+    // Otherwise, deallocate the memory of an (int/float/double/char) array
+    free(vector->data);
 
     // Deallocate the memory of the struct
-    free(v);
+    free(vector);
 }
 
-// Get an item of a vector
-// This returns a memory address to an (int/float/double/char) or
-// returns the pointer to the inner vector
-void *get(vector_p v, int idx)
-{
-    if (idx >= v->size || idx < 0)
-    {
-        printf("ERROR: Index %d out of bound!", idx);
+
+/// \n \n Get an item from a vector
+/// @description This function gets the memory address of an (int/float/double/char) or
+/// the pointer to the inner vector. Boundaries will be checked.
+/// @param vector: (vector_p). A pointer to a vector.
+/// @param index: (int). Index of the item.
+/// @return (void*) A void pointer pointing to that memory address.
+void *get(vector_p vector, int index) {
+    if (index >= vector->size || index < 0) {
+        printf("ERROR: Index %d out of bound!", index);
         exit(1);
     }
 
     // Get the address of the item in an array
-    if (v->type == VEC_INT)
-        return ((int *)v->data) + idx;
-    if (v->type == VEC_FLOAT)
-        return ((float *)v->data) + idx;
-    if (v->type == VEC_DOUBLE)
-        return ((double *)v->data) + idx;
-    if (v->type == VEC_CHAR)
-        return ((char *)v->data) + idx;
+    if (vector->type == VEC_INT)
+        return ((int *) vector->data) + index;
+    if (vector->type == VEC_FLOAT)
+        return ((float *) vector->data) + index;
+    if (vector->type == VEC_DOUBLE)
+        return ((double *) vector->data) + index;
+    if (vector->type == VEC_CHAR)
+        return ((char *) vector->data) + index;
 
     // Get what it points to
-    if (v->type == VEC_VEC_P)
-        return ((vector_p *)v->data)[idx];
+    if (vector->type == VEC_VEC_P)
+        return ((vector_p *) vector->data)[index];
 
     return NULL;
 }
 
-// Assign value to an item of a vector
-// NOTE: replace an existing vector with another vector can be problematic
-// if there are still pointers point to the existing vector
-void set(vector_p v, int idx, ...)
-{
-    if (idx >= v->size || idx < 0)
-    {
-        printf("ERROR: Index %d out of bound!", idx);
+
+/// \n \n Assign value to an item of a vector
+/// @description This function assigns a value to an item of a vector. Boundaries will be checked.
+/// @details It will cast the input as what `vector->type` indicated.
+/// So make sure value of the correct type is passed. \n
+/// Replacing an existing vector with another vector could lead to memory leak if
+/// there are any other pointers pointing to the existing vector. \n
+/// As a variadic function, it will promote (float) to (double) and (char) to (int) as input.
+/// @param vector: (vector_p). A pointer to a vector.
+/// @param index: (int). Index of the item.
+/// @param ...: (int/float/double/char/vector_p). Item to be assigned.
+/// @return (vector_p) A pointer to the input vector.
+vector_p set(vector_p vector, int index, ...) {
+    if (index >= vector->size || index < 0) {
+        printf("ERROR: Index %d out of bound!", index);
         exit(1);
     }
 
     va_list ap;
-    va_start(ap, idx);
+    va_start(ap, index);
 
-    if (v->type == VEC_INT)
-        ((int *)v->data)[idx] = va_arg(ap, int);
+    if (vector->type == VEC_INT)
+        ((int *) vector->data)[index] = va_arg(ap, int);
 
-    if (v->type == VEC_FLOAT)
-        ((float *)v->data)[idx] = (float)va_arg(ap, double);
+    // Type promotion
+    if (vector->type == VEC_FLOAT)
+        ((float *) vector->data)[index] = (float) va_arg(ap, double);
 
-    if (v->type == VEC_DOUBLE)
-        ((double *)v->data)[idx] = va_arg(ap, double);
+    if (vector->type == VEC_DOUBLE)
+        ((double *) vector->data)[index] = va_arg(ap, double);
 
-    if (v->type == VEC_CHAR)
-        ((char *)v->data)[idx] = (char)va_arg(ap, int);
+    // Type promotion
+    if (vector->type == VEC_CHAR)
+        ((char *) vector->data)[index] = (char) va_arg(ap, int);
 
-    if (v->type == VEC_VEC_P)
-    {
+    if (vector->type == VEC_VEC_P) {
         // Get the old vector
-        vector_p old_v = (vector_p)get(v, idx);
+        vector_p old_v = (vector_p) get(vector, index);
         vector_p new_v = va_arg(ap, vector_p);
 
         // If both pointer points to the same vector
-        if (old_v == new_v)
-        {
+        if (old_v == new_v) {
             printf("WARNING: try to replace the vector with the same vector!");
-            return;
+            return vector;
         }
 
-        if (old_v != NULL)
-        {
+        if (old_v != NULL) {
             // Delete the old vector
             delete_vector(old_v);
         }
 
         // Assign the new pointer to the array
-        ((vector_p *)v->data)[idx] = new_v;
+        ((vector_p *) vector->data)[index] = new_v;
     }
 
     va_end(ap);
+    return vector;
 }
 
 // Add constant to a vector
 const_op(+, add);
 
-// Substract a constant from a vector
+// Subtract a constant from a vector
 const_op(-, sub);
 
 // Multiply constant to a vector
@@ -148,149 +164,252 @@ const_op(*, mul);
 // Divide a vector by a constant
 const_op(/, div);
 
-// Format and print the vector
-void print_vector_(vector_p v, unsigned char depth)
-{
+/// \n \n Print a vector
+/// @description This function print a vector.
+/// @param vector: (vector_p). A pointer to a vector.
+/// @param depth: (unsigned char). Depth to print.
+/// @return No return value, called for side effects.
+void print_vector_(vector_p vector, unsigned char depth) {
     printf("[");
 
-    if (v->type == VEC_INT)
-    {
-        for (int i = 0; i < v->size; i++)
-            printf("%i, ", as_int(get(v, i)));
+    if (vector->type == VEC_INT) {
+        for (int i = 0; i < vector->size; i++)
+            printf("%i, ", as_int(get(vector, i)));
     }
 
-    if (v->type == VEC_FLOAT)
-    {
-        for (int i = 0; i < v->size; i++)
-            printf("%.3f, ", as_float(get(v, i)));
+    if (vector->type == VEC_FLOAT) {
+        for (int i = 0; i < vector->size; i++)
+            printf("%.3f, ", as_float(get(vector, i)));
     }
 
-    if (v->type == VEC_DOUBLE)
-    {
-        for (int i = 0; i < v->size; i++)
-            printf("%.3f, ", as_double(get(v, i)));
+    if (vector->type == VEC_DOUBLE) {
+        for (int i = 0; i < vector->size; i++)
+            printf("%.3f, ", as_double(get(vector, i)));
     }
 
-    if (v->type == VEC_CHAR)
-        printf("\"%s\"  ", ((char *)v->data));
+    if (vector->type == VEC_CHAR)
+        printf("\"%s\"  ", ((char *) vector->data));
 
-    if (v->type == VEC_VEC_P)
-    {
+    if (vector->type == VEC_VEC_P) {
         if (depth <= 1)
-            printf("<VEC_P>: %d  ", v->size);
-        else
-        {
-            vector_p *vec_p_arr = (vector_p *)v->data;
-            for (int i = 0; i < v->size; i++)
-            {
+            printf("<VEC_P>: %d  ", vector->size);
+        else {
+            vector_p *vec_p_arr = (vector_p *) vector->data;
+            for (int i = 0; i < vector->size; i++) {
                 print_vector_(vec_p_arr[i], depth - 1);
                 printf(", ");
             }
         }
     }
 
-    if (v->size > 0 || (v->type == VEC_VEC_P && depth <= 1))
+    if (vector->size > 0 || (vector->type == VEC_VEC_P && depth <= 1))
         printf("\b\b");
 
     printf("]");
 }
 
-// Resize the vector
-void resize(vector_p v, int size)
-{
-    if (v->capacity >= size)
-        return;
+/// \n \n Resize a vector
+/// @description This function increases the capacity of a vector.
+/// @param vector: (vector_p). A pointer to a vector.
+/// @param size: (int). Target size.
+/// @return (vector_p) A pointer to the input vector.
+vector_p resize(vector_p vector, int size) {
+    if (vector->capacity >= size)
+        return vector;
 
-    while (v->capacity < size)
-    {
-        v->capacity *= 2;
+    while (vector->capacity < size) {
+        vector->capacity *= 3 + 8;
     }
 
-    if (v->type == VEC_INT)
-        resize_realloc(v->data, int, v->capacity);
+    if (vector->type == VEC_INT)
+        resize_realloc(vector->data, int, vector->capacity);
 
-    if (v->type == VEC_FLOAT)
-        resize_realloc(v->data, float, v->capacity);
+    if (vector->type == VEC_FLOAT)
+        resize_realloc(vector->data, float, vector->capacity);
 
-    if (v->type == VEC_DOUBLE)
-        resize_realloc(v->data, double, v->capacity);
+    if (vector->type == VEC_DOUBLE)
+        resize_realloc(vector->data, double, vector->capacity);
 
-    if (v->type == VEC_CHAR)
-        resize_realloc(v->data, char, v->capacity);
+    if (vector->type == VEC_CHAR)
+        resize_realloc(vector->data, char, vector->capacity);
 
-    if (v->type == VEC_VEC_P)
-        resize_realloc(v->data, vector_p, v->capacity);
+    if (vector->type == VEC_VEC_P)
+        resize_realloc(vector->data, vector_p, vector->capacity);
+
+    return vector;
 }
 
-// Push item to a vector
-// float will be promoted to double
-// char will be promoted to int
-void push(vector_p v, ...)
-{
+/// \n \n Push an item to a vector
+/// @description This function pushes an item to a vector.
+/// @details It will cast the input as what `vector->type` indicated.
+/// So make sure value of the correct type is passed. \n
+/// As a variadic function, it will promote (float) to (double) and (char) to (int) as input.
+/// @param vector: (vector_p). A pointer to a vector.
+/// @param ...: (int/float/double/char/vector_p). Item to be pushed.
+/// @return (vector_p) A pointer to the input vector.
+vector_p push(vector_p vector, ...) {
     va_list ap;
-    va_start(ap, v);
+    va_start(ap, vector);
 
-    resize(v, v->size + 1);
+    resize(vector, vector->size + 1);
 
-    if (v->type == VEC_INT)
-        ((int *)v->data)[v->size] = va_arg(ap, int);
-
-    // type promotion
-    if (v->type == VEC_FLOAT)
-        ((float *)v->data)[v->size] = (float)va_arg(ap, double);
-
-    if (v->type == VEC_DOUBLE)
-        ((double *)v->data)[v->size] = va_arg(ap, double);
+    if (vector->type == VEC_INT)
+        ((int *) vector->data)[vector->size] = va_arg(ap, int);
 
     // type promotion
-    if (v->type == VEC_CHAR)
-        ((char *)v->data)[v->size] = (char)va_arg(ap, int);
+    if (vector->type == VEC_FLOAT)
+        ((float *) vector->data)[vector->size] = (float) va_arg(ap, double);
 
-    if (v->type == VEC_VEC_P)
-        ((vector_p *)v->data)[v->size] = va_arg(ap, vector_p);
+    if (vector->type == VEC_DOUBLE)
+        ((double *) vector->data)[vector->size] = va_arg(ap, double);
+
+    // type promotion
+    if (vector->type == VEC_CHAR)
+        ((char *) vector->data)[vector->size] = (char) va_arg(ap, int);
+
+    if (vector->type == VEC_VEC_P)
+        ((vector_p *) vector->data)[vector->size] = va_arg(ap, vector_p);
 
     va_end(ap);
-    v->size += 1;
+    vector->size += 1;
+    return vector;
 }
 
-int main(int argc, char const *argv[])
-{
-    vector_p v = new_vector(VEC_VEC_P);
+// Push many items to a vector
+// float will be promoted to double
+// char will be promoted to int
+/// \n \n Push arbitrary items to a vector
+/// @description This function pushes arbitrary items to a vector.
+/// @details It will cast inputs as what `vector->type` indicated.
+/// So make sure value of the correct type is passed. \n
+/// As a variadic function, it will promote (float) to (double) and (char) to (int) as input.
+/// @param vector: (vector_p). A pointer to a vector.
+/// @param num_item: (int). Number of items.
+/// @param ...: (int/float/double/char/vector_p). Items to be pushed.
+/// @return (vector_p) A pointer to the input vector.
+vector_p push_many(vector_p vector, int num_item, ...) {
+    va_list ap;
+    va_start(ap, num_item);
 
-    push(v, new_vector(VEC_INT));
-    push(get(v, 0), 2);
-    push(get(v, 0), 1);
-    push(get(v, 0), 'a');
+    resize(vector, vector->size + num_item);
 
-    const_add(get(v, 0), 10);
-    const_mul(get(v, 0), 2);
+    if (vector->type == VEC_INT) {
+        for (int i = vector->size; i < vector->size + num_item; i++) {
+            ((int *) vector->data)[i] = va_arg(ap, int);
+        }
+    }
 
-    push(v, new_vector(VEC_CHAR));
-    push(get(v, 1), 'A');
-    push(get(v, 1), 'B');
-    push(get(v, 1), 'C');
+    // type promotion
+    if (vector->type == VEC_FLOAT) {
+        for (int i = vector->size; i < vector->size + num_item; i++) {
+            ((float *) vector->data)[i] = (float) va_arg(ap, double);
+        }
+    }
 
-    const_add(get(v, 1), 10);
-    const_div(get(v, 1), 2);
+    if (vector->type == VEC_DOUBLE) {
+        for (int i = vector->size; i < vector->size + num_item; i++) {
+            ((double *) vector->data)[i] = va_arg(ap, double);
+        }
+    }
 
-    push(v, new_vector(VEC_FLOAT));
-    push(get(v, 2), 1.0f);
-    push(get(v, 2), 2.0f);
+    // type promotion
+    if (vector->type == VEC_CHAR) {
+        for (int i = vector->size; i < vector->size + num_item; i++) {
+            ((char *) vector->data)[i] = (char) va_arg(ap, int);
+        }
+    }
 
-    const_add(get(v, 2), 10.0);
-    const_sub(get(v, 2), 2.0);
+    if (vector->type == VEC_VEC_P) {
+        for (int i = vector->size; i < vector->size + num_item; i++) {
+            ((vector_p *) vector->data)[i] = va_arg(ap, vector_p);
+        }
+    }
 
-    push(v, new_vector(VEC_DOUBLE));
-    push(get(v, 3), 1.0);
-    push(get(v, 3), 3.0);
-
-    const_add(get(v, 3), 10.0);
-    const_mul(get(v, 3), 2.0);
-
-    resize(v, 100);
-
-    print_vector(v, 3);
-    delete_vector(v);
-
-    return 0;
+    va_end(ap);
+    vector->size += num_item;
+    return vector;
 }
+
+#define MAX_TOKEN_NUM 255
+#define MAX_TOKEN_LEN 255
+
+typedef struct token_list {
+    char num_tokens;
+    char tokens[MAX_TOKEN_NUM][MAX_TOKEN_LEN];
+    char tokens_len[MAX_TOKEN_NUM];
+} token_list_t;
+
+#define print_empty_line() printf(">>>\n")
+
+void remove_end_of_line_and_space(char *expr) {
+    int expr_len = strlen(expr);
+    if (expr_len == 0)
+        return;
+    int i = expr_len - 1;
+    while (i >= 0) {
+        if (expr[i] == '\n' || expr[i] == ' ') {
+            expr[i] = '\0';
+        } else {
+            break;
+        }
+        i -= 1;
+    }
+}
+
+void eval(char *expr) {
+    token_list_t token_list;
+
+    // Init token list
+    token_list.num_tokens = 0;
+    for (int i = 0; i < MAX_TOKEN_NUM; i++) {
+        token_list.tokens_len[i] = 0;
+        for (int j = 0; j < MAX_TOKEN_LEN; j++) {
+            token_list.tokens[i][j] = '\0';
+        }
+    }
+
+    char active = 0;
+
+    remove_end_of_line_and_space(expr);
+
+    int expr_len = strlen(expr);
+
+    if (expr_len == 0) {
+        print_empty_line();
+        return;
+    }
+
+    // Split expression by space
+    for (int i = 0; i < expr_len; i++) {
+        if (expr[i] == ' ') {
+            if (active)
+                active = 0;
+        } else {
+            if (!active) {
+                active = 1;
+                token_list.num_tokens += 1;
+            }
+            char current_token = token_list.num_tokens - 1;
+            char current_token_len = token_list.tokens_len[current_token];
+            token_list.tokens[current_token][current_token_len] = expr[i];
+            token_list.tokens_len[current_token] += 1;
+        }
+    }
+
+    // Check the first argument
+    if (strcmp(token_list.tokens[0], "NEW") == 0) {
+        ;
+    }
+}
+// IR -> run-time
+// NEW v VEC VEC_INT
+// PUSH v 1
+
+// IR -> C -> Machine code
+
+// R-like language -> IR
+// Use r code to build this part
+// v = c(1,2,3) --> NEW v VEC VEC_INT\n PUSH v 1\n PUSH v 2\n PUSH v 3\n
+// parser
+// tokenizer
+// abstract syntax tree

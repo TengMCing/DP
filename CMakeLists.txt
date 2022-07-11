@@ -7,4 +7,4 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra")
 
-add_executable(vec_lang main.c vector.h vector.c)
+add_executable(vec_lang main.c vector.h vector.c eval.h eval.c)
